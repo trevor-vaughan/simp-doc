@@ -234,8 +234,8 @@ namespace :docs do
         end
       end
   
-      require 'pry'
-      binding.pry
+      #require 'pry'
+      #binding.pry
       yard_opts = nil
       PuppetX::PuppetLabs::Strings::Util.generate([to_process, yard_opts])
     end
