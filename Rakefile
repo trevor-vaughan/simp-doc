@@ -77,6 +77,8 @@ DocPkg.new( File.dirname( __FILE__ ) ) do |t|
   t.clean_list << "#{t.base_dir}/pdf"
   t.clean_list << "#{t.base_dir}/sphinx_cache"
   t.clean_list << "#{t.base_dir}/docs/*/Changelog.rst"
+  t.clean_list << "#{t.base_dir}/docs/_static/autodoc"
+  t.clean_list << "#{t.base_dir}/.yardoc"
 
   t.exclude_list << 'dist'
   # Need to ignore any generated files from ERB's.
@@ -191,6 +193,51 @@ namespace :docs do
       fh.puts(collected_data.join("\n").gsub(',true',',**true**'))
       fh.sync
       fh.close
+    end
+  end
+
+  desc 'build the automatic docs'
+  task :auto do
+    require 'puppet_x/puppetlabs/strings/yard/tags/directives'
+    require 'puppet_x/puppetlabs/strings/util'
+
+    to_process = []
+    base_dir = File.join('..','..')
+    if File.exist?(File.join(base_dir,'src'))
+
+      Find.find(base_dir) do |path|
+        if File.symlink?(path)
+          Find.prune
+          next
+        end
+  
+        # Skip hidden files
+        short_name = path.split(base_dir).last
+        if short_name && File.basename(short_name) =~ /^\./
+          Find.prune
+          next
+        end
+  
+        # Don't document the tests
+        if File.directory?(path)
+          if (File.basename(path) == 'spec')
+            Find.prune
+          end
+  
+          # Jump past directories quickly
+          next
+        end
+  
+        # Grab all Ruby and Puppet files
+        if File.basename(path) =~ /\.(rb|pp)$/
+          to_process << path
+        end
+      end
+  
+      require 'pry'
+      binding.pry
+      yard_opts = nil
+      PuppetX::PuppetLabs::Strings::Util.generate([to_process, yard_opts])
     end
   end
 

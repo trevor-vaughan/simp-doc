@@ -1,0 +1,6 @@
+--markup markdown
+--title "SIMP Generated Documentation"
+# Currently broken
+# Freeradius should not have a number in the context path
+--exclude .*/freeradius/.*
+--output-dir ./docs/_static/autodoc

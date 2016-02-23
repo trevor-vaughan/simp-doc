@@ -24,6 +24,10 @@ Contents:
   license
   help
 
+`Generated Code Documentation`_
+
+.. _Generated Code Documentation: _static/autodoc/index.html
+
 Indices and tables
 ------------------
 
