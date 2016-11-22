@@ -20,12 +20,14 @@ Required RPMs
 
   # Installing from EL 6:
 
+    $ sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm
     $ sudo yum install -y augeas-devel createrepo genisoimage git gnupg2 \
         libicu-devel libxml2 libxml2-devel libxslt libxslt-devel \
         mock rpmdevtools clamav gcc gcc-c++ ruby-devel
 
   # Installing from EL 7:
 
+    $ sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
     $ sudo yum install -y augeas-devel createrepo genisoimage git gnupg2 \
         libicu-devel libxml2 libxml2-devel libxslt libxslt-devel \
         mock rpmdevtools clamav-update gcc gcc-c++ ruby-devel
@@ -36,11 +38,11 @@ Required RPMs
         libicu-devel libxml2 libxml2-devel libxslt libxslt-devel \
         mock rpm-sign rpmdevtools clamav-update gcc gcc-c++ ruby-devel
 
-.. warning::
+.. WARNING::
 
    Please use a **non-root** user for developing SIMP
 
-.. note::
+.. NOTE::
 
    The SIMP build generates various keys and does quite a bit of package
    signing. As such, your systems needs to be able to keep its entropy pool
@@ -101,7 +103,7 @@ development.
 
    $ rvm use --default 2.1.0
 
-.. note::
+.. NOTE::
 
   Once this is done, you can simply type ``rvm use 2.1.0``.
 
