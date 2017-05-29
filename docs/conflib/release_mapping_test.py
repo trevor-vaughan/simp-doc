@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 import sys
+import pprint
 
 from release_mapping import *
 from constants import *
@@ -12,14 +13,13 @@ def print_release_mapping():
     release_mapping_dict = get_version_map(
         '0.0',
         BASEDIR,
-        GITHUB_API_CONTENT_URL_BASE,
         GITHUB_VERSION_TARGETS,
         ON_RTD
     )
 
     if release_mapping_dict:
-        for k in release_mapping_dict:
-            print(k + ' => ' + release_mapping_dict[k], file=sys.stdout)
+        pp = pprint.PrettyPrinter()
+        pp.pprint(release_mapping_dict)
     else:
         print('Error: No valid release mappings found', file=sys.stderr)
 

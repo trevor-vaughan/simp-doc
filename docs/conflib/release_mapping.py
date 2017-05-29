@@ -10,10 +10,10 @@ import yaml
 
 #from data_merge import *
 
-from option_merge import MergedOptions
+from deepmerge import Merger
 from IPython import embed
 
-def get_version_map(target_version, basedir, github_api_content_url_base, github_version_targets, on_rtd):
+def get_version_map(target_version, basedir, github_version_targets, on_rtd):
     """
     Fetch the version map
 
@@ -21,106 +21,66 @@ def get_version_map(target_version, basedir, github_api_content_url_base, github
     from GitHub directly
     """
 
-    ver_map = MergedOptions()
+    ver_map = {}
+
+    ver_map_merger = Merger(
+        [
+            (list, ['append']),
+            (dict, ['merge'])
+        ],
+        ['override'],
+        ['override']
+        )
+
+    ver_mapper_name = 'release_mappings.yaml'
 
     if not on_rtd:
-        os_ver_mapper_name = 'release_mappings.yaml'
 
-        os_ver_mappers = glob.glob(os.path.join(basedir, '..', '..', '..', 'build', 'distributions', '*', '*', '*', os_ver_mapper_name))
+        os_ver_mappers = glob.glob(os.path.join(basedir, '..', '..', '..', 'build', 'distributions', '*', '*', '*', ver_mapper_name))
 
         if not os_ver_mappers:
-            os_ver_mappers = glob.glob(os.path.join(basedir, '..', '..', '..', 'build', os_ver_mapper_name))
+            os_ver_mappers = glob.glob(os.path.join(basedir, '..', '..', '..', 'build', ver_mapper_name))
 
         if os_ver_mappers:
             for os_ver_mapper in os_ver_mappers:
                 with open(os_ver_mapper, 'r') as f:
-                    ver_map = MergedOptions.using(ver_map, yaml.load(f.read()))
+                    ver_map_merger.merge(ver_map, yaml.load(f.read()))
 
-    if on_rtd or not ver_map.as_dict():
-        os_ver_mapper_urls = []
+    if on_rtd or not ver_map:
+        github_api_base = 'https://api.github.com/repos/simp/simp-core/git/trees/'
 
         for version_target in github_version_targets:
-            github_version_ref = '?ref=' + version_target
+            github_api_target = github_api_base + version_target
+            github_opts = '?recursive=1'
+
+            if ver_map:
+                break
 
             try:
-                embed()
+                # Grab the distribution tree
+                distro_json = json.load(urllib2.urlopen(github_api_target + github_opts))
 
-                # Find the distributions in GitHub
-                distro_json = json.load(
-                    urllib2.urlopen(github_api_content_url_base +
-                                    'build/distributions' +
-                                    github_version_ref
-                                   )
-                    )
+                release_mapping_targets = [x for x in distro_json['tree'] if (
+                    x['path'] and re.search(r'release_mappings.yaml$', x['path'])
+                )]
 
-                distros = [item['path'] for item in filter(
-                    lambda x: x['type'] == 'dir', distro_json
-                    )]
+                for release_mapping_target in release_mapping_targets:
+                    print("NOTICE: Downloading Version Mapper: " + release_mapping_target['path'], file=sys.stderr)
 
-                # Find distribution releases in GitHub
-                distro_releases = []
-                for distro in distros:
-                    distro_releases.extend([item['path'] for item in filter(
-                        lambda x: x['type'] == 'dir', json.load(
-                            urllib2.urlopen(github_api_content_url_base +
-                                            distro +
-                                            github_version_ref
-                                           )
-                        )
-                    )])
+                    try:
+                        release_obj = json.load(urllib2.urlopen(release_mapping_target['url']))
 
-                # Find distribution release architectures in GitHub
-                distro_release_arches = []
-                for distro_release in distro_releases:
-                    distro_release_arches.extend([ item['path'] for item in filter(
-                        lambda x: x['type'] == 'dir', json.load(
-                            urllib2.urlopen(github_api_content_url_base +
-                                            distro_release +
-                                            github_version_ref
-                                           )
-                        )
-                    )])
+                        release_yaml = base64.b64decode(release_obj['content'])
 
-                release_mappings = []
-                for distro_release_arch in distro_release_arches:
-                    release_mappings.extend([ item['path'] for item in filter(
-                        lambda x: (x['type'] == 'file') and (x['name'] == os_ver_mapper_name), json.load(
-                            urllib2.urlopen(github_api_content_url_base +
-                                            distro_release_arch +
-                                            github_version_ref
-                                           )
-                        )
-                    )])
+                        ver_map_merger.merge(ver_map, yaml.load(release_yaml))
 
-                for release_mapping in release_mappings:
-                    print("NOTICE: Downloading Version Mapper: " + release_mapping, file=sys.stderr)
-
-                    release_obj = json.load(urllib2.urlopen(github_api_content_url_base +
-                                                            release_mapping +
-                                                            github_version_ref
-                                                           )
-                                           )
-
-                    release_yaml = base64.b64decode(release_obj['content'])
-
-                    ver_map = MergedOptions.using(ver_map, yaml.load(release_yaml))
-
-                embed()
+                    except urllib2.URLError:
+                        print('Error downloading ' + release_mapping_target['path'],  file=sys.stderr)
+                        next
 
             except urllib2.URLError:
+                print('Error downloading ' + github_api_target + github_opts, file=sys.stderr)
                 next
-
-            # Grab them from the Internet!
-            for os_ver_mapper_url in os_ver_mapper_urls:
-                try:
-                    os_ver_mapper_content = urllib2.urlopen(os_ver_mapper_url).read()
-                    # If we don't have a valid version from the RPM spec file, just
-                    # pick up what we found.
-                    if not target_version or (target_version == '0.0'):
-                        version = version_target
-                    break
-                except urllib2.URLError:
-                    next
 
         return ver_map
 

@@ -8,8 +8,6 @@ ON_RTD = os.environ.get('READTHEDOCS') == 'True'
 
 GITHUB_BASE = os.getenv('SIMP_GITHUB_BASE', 'https://raw.githubusercontent.com/simp')
 
-GITHUB_API_CONTENT_URL_BASE = 'https://api.github.com/repos/simp/simp-core/contents/'
-
 # This ordering matches our usual default fallback branch scheme
 GITHUB_VERSION_TARGETS = [
     'master',
