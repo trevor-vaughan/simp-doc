@@ -2,7 +2,7 @@
 
 from __future__ import print_function
 import sys
-import os
+import re
 
 from get_simp_version import *
 from constants import *
@@ -17,10 +17,10 @@ def print_simp_version():
         ON_RTD
     )
 
-    if simp_version_dict:
+    if re.search(r'^NEED_', simp_version_dict['release']):
+        print('Error: No valid SIMP version found', file=sys.stderr)
+    else:
         for k in simp_version_dict:
             print(k + ' => ' + simp_version_dict[k], file=sys.stdout)
-    else:
-        print('Error: No valid SIMP version found', file=sys.stderr)
 
 print_simp_version()

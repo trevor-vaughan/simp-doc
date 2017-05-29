@@ -12,9 +12,11 @@ def get_simp_version(basedir, github_base, github_version_targets, on_rtd):
     pulling things from GitHub if they cannot be found locally.
     """
 
+    release_placeholder = 'NEED_FULL_SIMP_BUID_TREE'
+
     retval = {
-        'version': None,
-        'release': None,
+        'version': '0.0',
+        'release': release_placeholder,
         'full_version': None,
         'version_family': None
     }
@@ -34,7 +36,7 @@ def get_simp_version(basedir, github_base, github_version_targets, on_rtd):
                     elif 'release' in _tmp:
                         retval['release'] = _tmp[-1].strip()
 
-    if on_rtd or not retval['version']:
+    if on_rtd or (retval['release'] == release_placeholder):
         os_simp_spec_urls = []
 
         rtd_version = os.environ.get('READTHEDOCS_VERSION')
@@ -74,10 +76,7 @@ def get_simp_version(basedir, github_base, github_version_targets, on_rtd):
             if retval['version'] and retval['release']:
                 break
 
-    if retval['version'] and retval['release']:
-        retval['full_version'] = '-'.join([retval['version'], retval['release']])
-        retval['version_family'] = re.sub(r'\.\d$', '.X', retval['version'])
-    else:
-        retval = None
+    retval['full_version'] = '-'.join([retval['version'], retval['release']])
+    retval['version_family'] = re.sub(r'\.\d$', '.X', retval['version'])
 
     return retval

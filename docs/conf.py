@@ -29,34 +29,23 @@ target_dirs = ['dynamic']
 # Allow this to be built up over time
 epilog = []
 
-el_major_version = 'UNKNOWN'
-el_minor_version = 'MAPPING'
-saved_major_version = 'UNKNOWN'
-saved_minor_version = 'MAPPING'
-# Default version and release to ensure we build *something*
-default_simp_version = '6.0'
-default_simp_release = 'X'
-
 simp_version_dict = get_simp_version(BASEDIR, GITHUB_BASE, GITHUB_VERSION_TARGETS, ON_RTD)
 
 # Just for convenience
 #
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
-# built documents.
+# built documents
 #
-# The short X.Y version.
+
+# The short X.Y version
 version = simp_version_dict['version']
-if not version:
-    version = '0.0'
 
+# The minor release
 release = simp_version_dict['release']
-if not release:
-    release = 'NEED_FULL_SIMP_BUILD_TREE'
 
-# The full version, including alpha/beta/rc tags.
+# The full version, including alpha/beta/rc tags
 full_version = simp_version_dict['full_version']
-version_family = simp_version_dict['version_family']
 
 if ON_RTD:
     _insert_target = 1
@@ -65,23 +54,25 @@ else:
 
 # Update the GitHub list with the rest of our 'best guess' content
 # This is in reverse order so that it's easier to insert
-GITHUB_VERSION_TARGETS.insert(_insert_target, version_family)
-GITHUB_VERSION_TARGETS.insert(_insert_target, 'simp-' + version_family)
+GITHUB_VERSION_TARGETS.insert(_insert_target, simp_version_dict['version_family'])
+GITHUB_VERSION_TARGETS.insert(_insert_target, 'simp-' + simp_version_dict['version_family'])
 
 # If we have some sort of valid release, shove it on the stack too.
 if release != 'NEED_FULL_SIMP_BUILD_TREE':
     GITHUB_VERSION_TARGETS.insert(0, full_version)
 
-ver_map = get_version_map(version, BASEDIR, GITHUB_API_CONTENT_URL_BASE, GITHUB_VERSION_TARGETS)
+ver_map = get_version_map(
+    version,
+    BASEDIR,
+    GITHUB_API_CONTENT_URL_BASE,
+    GITHUB_VERSION_TARGETS,
+    ON_RTD
+)
 
 if ver_map:
-    release_mapping_list = format_version_map(ver_map)
+    release_mapping_list = format_version_map(ver_map, ON_RTD)
 
 epilog.append('.. |simp_version| replace:: %s' % full_version)
-
-#el_version = ".".join([el_major_version, el_minor_version])
-el_version = ".".join([saved_major_version, saved_minor_version])
-epilog.append('.. |el_version| replace:: %s' % el_version)
 
 def setup(app):
     app.add_config_value('simp_version', full_version, 'env') # The third value must always be 'env'

@@ -4,14 +4,16 @@ import glob
 import os
 import urllib2
 import re
+import base64
 import json
 import yaml
 
-from data_merge import *
+#from data_merge import *
 
+from option_merge import MergedOptions
 from IPython import embed
 
-def get_version_map(target_version, basedir, github_api_content_url_base, github_version_targets):
+def get_version_map(target_version, basedir, github_api_content_url_base, github_version_targets, on_rtd):
     """
     Fetch the version map
 
@@ -19,40 +21,98 @@ def get_version_map(target_version, basedir, github_api_content_url_base, github
     from GitHub directly
     """
 
-    os_ver_mapper_name = 'release_mappings.yaml'
+    ver_map = MergedOptions()
 
-    os_ver_mappers = glob.glob(os.path.join(basedir, '..', '..', '..', 'build', 'distributions', '*', '*', '*', os_ver_mapper_name))
+    if not on_rtd:
+        os_ver_mapper_name = 'release_mappings.yaml'
 
-    if not os_ver_mappers:
-        os_ver_mappers = glob.glob(os.path.join(basedir, '..', '..', '..', 'build', os_ver_mapper_name))
+        os_ver_mappers = glob.glob(os.path.join(basedir, '..', '..', '..', 'build', 'distributions', '*', '*', '*', os_ver_mapper_name))
 
-    if os_ver_mappers:
-        ver_map = {}
+        if not os_ver_mappers:
+            os_ver_mappers = glob.glob(os.path.join(basedir, '..', '..', '..', 'build', os_ver_mapper_name))
 
-        for os_ver_mapper in os_ver_mappers:
-            with open(os_ver_mapper, 'r') as f:
-                ver_map = data_merge(ver_map, yaml.load(f.read()))
-    else:
+        if os_ver_mappers:
+            for os_ver_mapper in os_ver_mappers:
+                with open(os_ver_mapper, 'r') as f:
+                    ver_map = MergedOptions.using(ver_map, yaml.load(f.read()))
+
+    if on_rtd or not ver_map.as_dict():
         os_ver_mapper_urls = []
 
         for version_target in github_version_targets:
             github_version_ref = '?ref=' + version_target
 
-            # Find the directories in GitHub
-            for _distro in [
-                    item['path'] for item in filter(
-                        lambda x: x['type'] == 'dir', json.loads(
-                            urllib2.urlopen(github_api_content_url_base + github_version_ref)
-                        )
+            try:
+                embed()
+
+                # Find the distributions in GitHub
+                distro_json = json.load(
+                    urllib2.urlopen(github_api_content_url_base +
+                                    'build/distributions' +
+                                    github_version_ref
+                                   )
                     )
-                ]:
+
+                distros = [item['path'] for item in filter(
+                    lambda x: x['type'] == 'dir', distro_json
+                    )]
+
+                # Find distribution releases in GitHub
+                distro_releases = []
+                for distro in distros:
+                    distro_releases.extend([item['path'] for item in filter(
+                        lambda x: x['type'] == 'dir', json.load(
+                            urllib2.urlopen(github_api_content_url_base +
+                                            distro +
+                                            github_version_ref
+                                           )
+                        )
+                    )])
+
+                # Find distribution release architectures in GitHub
+                distro_release_arches = []
+                for distro_release in distro_releases:
+                    distro_release_arches.extend([ item['path'] for item in filter(
+                        lambda x: x['type'] == 'dir', json.load(
+                            urllib2.urlopen(github_api_content_url_base +
+                                            distro_release +
+                                            github_version_ref
+                                           )
+                        )
+                    )])
+
+                release_mappings = []
+                for distro_release_arch in distro_release_arches:
+                    release_mappings.extend([ item['path'] for item in filter(
+                        lambda x: (x['type'] == 'file') and (x['name'] == os_ver_mapper_name), json.load(
+                            urllib2.urlopen(github_api_content_url_base +
+                                            distro_release_arch +
+                                            github_version_ref
+                                           )
+                        )
+                    )])
+
+                for release_mapping in release_mappings:
+                    print("NOTICE: Downloading Version Mapper: " + release_mapping, file=sys.stderr)
+
+                    release_obj = json.load(urllib2.urlopen(github_api_content_url_base +
+                                                            release_mapping +
+                                                            github_version_ref
+                                                           )
+                                           )
+
+                    release_yaml = base64.b64decode(release_obj['content'])
+
+                    ver_map = MergedOptions.using(ver_map, yaml.load(release_yaml))
 
                 embed()
+
+            except urllib2.URLError:
+                next
 
             # Grab them from the Internet!
             for os_ver_mapper_url in os_ver_mapper_urls:
                 try:
-                    print("NOTICE: Downloading Version Mapper: " + os_ver_mapper_url, file=sys.stderr)
                     os_ver_mapper_content = urllib2.urlopen(os_ver_mapper_url).read()
                     # If we don't have a valid version from the RPM spec file, just
                     # pick up what we found.
@@ -62,14 +122,16 @@ def get_version_map(target_version, basedir, github_api_content_url_base, github
                 except urllib2.URLError:
                     next
 
-        #release_mapping_list = ['Release Mapping Entry Not Found for Version ' + full_version]
+        return ver_map
 
-def format_version_map(ver_map):
+def format_version_map(ver_map, on_rtd):
     """ Return a version of the version map that is suitable for printing. """
 
     os_flavors = None
 
     map_versions = sorted(ver_map['simp_releases'].keys(), reverse=True)
+
+    release_mapping_list = ['Release Mapping Entry Not Found for Version ' + full_version]
 
     unstable_releases = []
     for map_version in map_versions:
