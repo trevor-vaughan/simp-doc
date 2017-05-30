@@ -8,6 +8,7 @@ import base64
 import json
 import yaml
 
+from textwrap import dedent
 from IPython import embed
 
 def __update_ver_map(ver_map, data):
@@ -31,7 +32,7 @@ def __update_ver_map(ver_map, data):
             else:
                 if ver_map.get(simp_version):
                     if not ver_map[simp_version].get(os_key):
-                        ver_map[simp_version][os_key]= {'isos': []}
+                        ver_map[simp_version][os_key] = {'isos': []}
                 else:
                     ver_map[simp_version] = {os_key: {'isos': []}}
 
@@ -39,7 +40,7 @@ def __update_ver_map(ver_map, data):
                     if iso not in ver_map[simp_version][os_key]['isos']:
                         ver_map[simp_version][os_key]['isos'].append(iso)
 
-def get_version_map(target_version, basedir, github_version_targets, on_rtd):
+def get_version_map(basedir, github_version_targets, on_rtd):
     """
     Fetch the version map
 
@@ -92,27 +93,35 @@ def get_version_map(target_version, basedir, github_version_targets, on_rtd):
                         __update_ver_map(ver_map, yaml.load(release_yaml))
 
                     except urllib2.URLError:
-                        print('Error downloading ' + release_mapping_target['path'],  file=sys.stderr)
+                        print('Error downloading ' + release_mapping_target['path'], file=sys.stderr)
                         continue
 
             except urllib2.URLError:
                 print('Error downloading ' + github_api_target + github_opts, file=sys.stderr)
                 continue
 
-        return ver_map
+    return ver_map
 
-def version_map_to_rst(ver_map, on_rtd):
+def version_map_to_rst(simp_release, ver_map):
     """ Return a version of the version map that is suitable for printing. """
 
-    # Easy, cop out
+    none_found_msg = '* No SIMP Mapping Data Found for "' + simp_release + '"'
+
+    # Easy cop out
     if not ver_map:
-        return '* No SIMP Mapping Data Found'
+        return none_found_msg
+
+    # Allow us to catch all matches from different .X levels
+    simp_release_re = re.compile('^' + re.sub('X', '.+', re.escape(simp_release)) + '$')
 
     # Build the Release mapping table for insertion into the docs
     release_mapping_list = []
 
-    # Reverse sort to get the .X releases first
+    # Reverse sort to get the .X releases first if necessary
     for simp_release in sorted(ver_map.keys(), reverse=True):
+        if not simp_release_re.match(simp_release):
+            continue
+
         release_mapping_list.append('* **SIMP ' + simp_release + '**')
 
         for os_key in sorted(ver_map[simp_release].keys()):
@@ -122,7 +131,24 @@ def version_map_to_rst(ver_map, on_rtd):
                 release_mapping_list.append("\n      * **ISO #" + str(i+1) + ":** " + iso['name'])
                 release_mapping_list.append("      * **Checksum:** " + iso['checksum'])
 
-        # Trailing newline
-        release_mapping_list.append('')
+    if not release_mapping_list:
+        release_mapping_list.append(none_found_msg)
 
-        return "\n".join(release_mapping_list)
+    # Trailing newline
+    release_mapping_list.append('')
+
+    return "\n".join(release_mapping_list)
+
+def known_os_compatibility_rst(simp_release, basedir, github_version_targets, on_rtd):
+    """ Output the fullly formatted OS Compatibility RST """
+
+    ver_map = get_version_map(basedir, github_version_targets, on_rtd)
+
+    os_compat_rst = """
+    Known OS Compatibility
+    ----------------------
+
+    {0}
+    """.format(version_map_to_rst(simp_release, ver_map))
+
+    return dedent(os_compat_rst)

@@ -15,8 +15,6 @@ GITHUB_VERSION_TARGETS = [
     '4.2.X'
 ]
 
-CHANGELOG_NAME = 'Changelog.rst'
+CHANGELOG_TGT = 'Changelog.rst'
 
-CHANGELOG = os.getenv('SIMP_CHANGELOG_PATH',
-                      os.path.join(BASEDIR, '..', '..', '..', CHANGELOG_NAME)
-                     )
+KNOWN_OS_COMPATIBILITY_TGT = 'Known_OS_Compatibility.rst'

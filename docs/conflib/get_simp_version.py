@@ -71,7 +71,7 @@ def get_simp_version(basedir, github_base, github_version_targets, on_rtd):
                             retval['release'] = re.sub(r'%\{.*?\}', '', release)
                     break
                 except urllib2.URLError:
-                    next
+                    continue
 
             if retval['version'] and retval['release']:
                 break

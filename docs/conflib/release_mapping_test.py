@@ -8,21 +8,13 @@ from release_mapping import *
 from constants import *
 
 def print_release_mapping():
-    """ Small test for get_simp_version() """
+    """ Test the release mapping """
 
-    release_mapping_dict = get_version_map(
-        '0.0',
+    print(known_os_compatibility_rst(
+        '6.X',
         BASEDIR,
         GITHUB_VERSION_TARGETS,
         ON_RTD
-    )
-
-    if release_mapping_dict:
-        #pp = pprint.PrettyPrinter()
-        #pp.pprint(release_mapping_dict)
-
-        print(version_map_to_rst(release_mapping_dict, ON_RTD), file=sys.stdout)
-    else:
-        print('Error: No valid release mappings found', file=sys.stderr)
+    ), file=sys.stdout)
 
 print_release_mapping()

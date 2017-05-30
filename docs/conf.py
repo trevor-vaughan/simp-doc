@@ -16,11 +16,13 @@ from __future__ import print_function
 import sys
 import os
 import datetime
-import urllib2
+
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from conflib.constants import *
 from conflib.get_simp_version import *
 from conflib.release_mapping import *
+from conflib.changelog import *
 
 # Pre-Build Manipulation Code
 
@@ -61,82 +63,29 @@ GITHUB_VERSION_TARGETS.insert(_insert_target, 'simp-' + simp_version_dict['versi
 if release != 'NEED_FULL_SIMP_BUILD_TREE':
     GITHUB_VERSION_TARGETS.insert(0, full_version)
 
-ver_map = get_version_map(
-    version,
-    BASEDIR,
-    GITHUB_VERSION_TARGETS,
-    ON_RTD
-)
-
-if ver_map:
-    release_mapping_rst = version_map_to_rst(ver_map, ON_RTD)
-
 epilog.append('.. |simp_version| replace:: %s' % full_version)
 
 def setup(app):
     app.add_config_value('simp_version', full_version, 'env') # The third value must always be 'env'
 
-known_os_compat_content = """
-Known OS Compatibility
-----------------------
+    known_os_compat_content = known_os_compatibility_rst(version, BASEDIR, GITHUB_VERSION_TARGETS, ON_RTD)
 
-{0}
-""".format(release_mapping_rst)
+    changelog_content = changelog_to_rst(CHANGELOG_TGT, BASEDIR, GITHUB_BASE, GITHUB_VERSION_TARGETS, ON_RTD)
 
-changelog_urls = []
-for version_target in GITHUB_VERSION_TARGETS:
-    changelog_urls.append('/'.join([GITHUB_BASE, 'simp-core', version_target, CHANGELOG_NAME]))
+    for target_dir in target_dirs:
+        target_dir = os.path.join(BASEDIR, target_dir)
 
-changelog_stub = """
-Changelog Stub
-==============
-
-.. warning::
-    The build scripts could not find a valid Changelog either locally or on the Internet!
-
-.. note::
-    Please check your Internet connectivity as well as your local build system.
-
-Attempted Locations:
-{0}
-""".format("\n".join(["  * %s" % x for x in [CHANGELOG] + changelog_urls]))
-
-current_changelog = changelog_stub
-
-for target_dir in target_dirs:
-    target_dir = os.path.join(BASEDIR, target_dir)
-    if not os.path.exists(target_dir):
+        if not os.path.exists(target_dir):
             os.mkdir(target_dir)
 
-    changelog_dest =  os.path.join(target_dir, CHANGELOG_NAME)
-    known_os_compat_dest =  os.path.join(target_dir, 'Known_OS_Compatibility.rst')
+        changelog_dest = os.path.join(target_dir, CHANGELOG_TGT)
+        known_os_compat_dest = os.path.join(target_dir, KNOWN_OS_COMPATIBILITY_TGT)
 
-    if os.path.isfile(CHANGELOG):
-        # Is the Changelog on disk?
-        with open(CHANGELOG, 'r') as changelog_content:
-            current_changelog = changelog_content.read()
-    else:
-        # Grab it from the Internet!
-        # This is really designed for use with ReadTheDocs
+        with open(changelog_dest, 'w') as f:
+            f.write(changelog_content)
 
-        for changelog_url in changelog_urls:
-            try:
-                print("NOTICE: Downloading Changelog: " + changelog_url, file=sys.stderr)
-                current_changelog = urllib2.urlopen(changelog_url).read()
-                break
-            except urllib2.URLError:
-                next
-
-    # Write out the new Changelog
-    if current_changelog == changelog_stub:
-        sys.stderr.write("Warning: Could not find a valid Changelog, using the stub....\n")
-
-    with open(changelog_dest, 'w') as f:
-        f.write(current_changelog)
-
-    with open(known_os_compat_dest, 'w') as f:
-        f.write(known_os_compat_content)
-
+        with open(known_os_compat_dest, 'w') as f:
+            f.write(known_os_compat_content)
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
