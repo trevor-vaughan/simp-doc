@@ -69,6 +69,7 @@ def get_version_map(target_version, basedir, github_version_targets, on_rtd):
             github_api_target = github_api_base + version_target
             github_opts = '?recursive=1'
 
+            # We've found it, bail
             if ver_map:
                 break
 

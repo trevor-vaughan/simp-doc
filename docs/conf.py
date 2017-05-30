@@ -64,32 +64,30 @@ if release != 'NEED_FULL_SIMP_BUILD_TREE':
 ver_map = get_version_map(
     version,
     BASEDIR,
-    GITHUB_API_CONTENT_URL_BASE,
     GITHUB_VERSION_TARGETS,
     ON_RTD
 )
 
 if ver_map:
-    release_mapping_list = format_version_map(ver_map, ON_RTD)
+    release_mapping_rst = version_map_to_rst(ver_map, ON_RTD)
 
 epilog.append('.. |simp_version| replace:: %s' % full_version)
 
 def setup(app):
     app.add_config_value('simp_version', full_version, 'env') # The third value must always be 'env'
-    app.add_config_value('el_version', el_version, 'env') # The third value must always be 'env'
 
 known_os_compat_content = """
 Known OS Compatibility
 ----------------------
 
 {0}
-""".format("\n".join(release_mapping_list))
+""".format(release_mapping_rst)
 
-CHANGELOG_urls = []
+changelog_urls = []
 for version_target in GITHUB_VERSION_TARGETS:
-    CHANGELOG_urls.append('/'.join([GITHUB_BASE, 'simp-core', version_target, CHANGELOG_NAME]))
+    changelog_urls.append('/'.join([GITHUB_BASE, 'simp-core', version_target, CHANGELOG_NAME]))
 
-CHANGELOG_stub = """
+changelog_stub = """
 Changelog Stub
 ==============
 
@@ -101,40 +99,40 @@ Changelog Stub
 
 Attempted Locations:
 {0}
-""".format("\n".join(["  * %s" % x for x in [CHANGELOG] + CHANGELOG_urls]))
+""".format("\n".join(["  * %s" % x for x in [CHANGELOG] + changelog_urls]))
 
-current_CHANGELOG = CHANGELOG_stub
+current_changelog = changelog_stub
 
 for target_dir in target_dirs:
     target_dir = os.path.join(BASEDIR, target_dir)
     if not os.path.exists(target_dir):
             os.mkdir(target_dir)
 
-    CHANGELOG_dest =  os.path.join(target_dir, CHANGELOG_NAME)
+    changelog_dest =  os.path.join(target_dir, CHANGELOG_NAME)
     known_os_compat_dest =  os.path.join(target_dir, 'Known_OS_Compatibility.rst')
 
     if os.path.isfile(CHANGELOG):
         # Is the Changelog on disk?
-        with open(CHANGELOG, 'r') as CHANGELOG_content:
-            current_CHANGELOG = CHANGELOG_content.read()
+        with open(CHANGELOG, 'r') as changelog_content:
+            current_changelog = changelog_content.read()
     else:
         # Grab it from the Internet!
         # This is really designed for use with ReadTheDocs
 
-        for CHANGELOG_url in CHANGELOG_urls:
+        for changelog_url in changelog_urls:
             try:
-                print("NOTICE: Downloading Changelog: " + CHANGELOG_url, file=sys.stderr)
-                current_CHANGELOG = urllib2.urlopen(CHANGELOG_url).read()
+                print("NOTICE: Downloading Changelog: " + changelog_url, file=sys.stderr)
+                current_changelog = urllib2.urlopen(changelog_url).read()
                 break
             except urllib2.URLError:
                 next
 
     # Write out the new Changelog
-    if current_CHANGELOG == CHANGELOG_stub:
+    if current_changelog == changelog_stub:
         sys.stderr.write("Warning: Could not find a valid Changelog, using the stub....\n")
 
-    with open(CHANGELOG_dest, 'w') as f:
-        f.write(current_CHANGELOG)
+    with open(changelog_dest, 'w') as f:
+        f.write(current_changelog)
 
     with open(known_os_compat_dest, 'w') as f:
         f.write(known_os_compat_content)
