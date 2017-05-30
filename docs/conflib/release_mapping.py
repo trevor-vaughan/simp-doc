@@ -8,10 +8,34 @@ import base64
 import json
 import yaml
 
-#from data_merge import *
-
-from deepmerge import Merger
 from IPython import embed
+
+def __update_ver_map(ver_map, data):
+    """
+    This bunch of nonsense is to translate the release_mappings.yaml into
+    something that can be output to the Compatibility list in a sane manner
+    """
+
+    simp_versions = sorted(data['simp_releases'].keys(), reverse=True)
+
+    for simp_version in simp_versions:
+        for flavor in data['simp_releases'][simp_version]['flavors'].keys():
+            isos = data['simp_releases'][simp_version]['flavors'][flavor]['isos']
+            os_key = flavor + ' ' + data['simp_releases'][simp_version]['flavors'][flavor]['os_version']
+
+            if not (isos and os_key):
+                continue
+
+            if not ver_map:
+                ver_map[simp_version] = {os_key: {'isos': isos}}
+            else:
+                if ver_map.get(simp_version):
+                    if not ver_map[simp_version].get(os_key):
+                        ver_map[simp_version][os_key]= {'isos': []}
+                else:
+                    ver_map[simp_version] = {os_key: {'isos': []}}
+
+                ver_map[simp_version][os_key]['isos'].extend(isos)
 
 def get_version_map(target_version, basedir, github_version_targets, on_rtd):
     """
@@ -23,19 +47,9 @@ def get_version_map(target_version, basedir, github_version_targets, on_rtd):
 
     ver_map = {}
 
-    ver_map_merger = Merger(
-        [
-            (list, ['append']),
-            (dict, ['merge'])
-        ],
-        ['override'],
-        ['override']
-        )
-
     ver_mapper_name = 'release_mappings.yaml'
 
     if not on_rtd:
-
         os_ver_mappers = glob.glob(os.path.join(basedir, '..', '..', '..', 'build', 'distributions', '*', '*', '*', ver_mapper_name))
 
         if not os_ver_mappers:
@@ -44,7 +58,7 @@ def get_version_map(target_version, basedir, github_version_targets, on_rtd):
         if os_ver_mappers:
             for os_ver_mapper in os_ver_mappers:
                 with open(os_ver_mapper, 'r') as f:
-                    ver_map_merger.merge(ver_map, yaml.load(f.read()))
+                    __update_ver_map(ver_map, yaml.load(f.read()))
 
     if on_rtd or not ver_map:
         github_api_base = 'https://api.github.com/repos/simp/simp-core/git/trees/'
@@ -72,15 +86,15 @@ def get_version_map(target_version, basedir, github_version_targets, on_rtd):
 
                         release_yaml = base64.b64decode(release_obj['content'])
 
-                        ver_map_merger.merge(ver_map, yaml.load(release_yaml))
+                        __update_ver_map(ver_map, yaml.load(release_yaml))
 
                     except urllib2.URLError:
                         print('Error downloading ' + release_mapping_target['path'],  file=sys.stderr)
-                        next
+                        continue
 
             except urllib2.URLError:
                 print('Error downloading ' + github_api_target + github_opts, file=sys.stderr)
-                next
+                continue
 
         return ver_map
 
@@ -88,42 +102,6 @@ def format_version_map(ver_map, on_rtd):
     """ Return a version of the version map that is suitable for printing. """
 
     os_flavors = None
-
-    map_versions = sorted(ver_map['simp_releases'].keys(), reverse=True)
-
-    release_mapping_list = ['Release Mapping Entry Not Found for Version ' + full_version]
-
-    unstable_releases = []
-    for map_version in map_versions:
-        if re.search('\.X$', map_version):
-            unstable_releases.append(map_version)
-
-    unstable_releases = sorted(unstable_releases, reverse=True)
-
-    major_releases = []
-    for head_release in unstable_releases:
-        major_version = head_release.split('.')[0]
-        if re.search('^' + major_version + '\.', head_release):
-            major_releases.append(major_version)
-
-    head_releases = []
-    major_found = []
-    for map_version in map_versions:
-        major_version = map_version.split('.')[0]
-        if major_version in major_found:
-            continue
-
-        if re.search('^' + major_version + '\.', map_version):
-            head_releases.append(map_version)
-            major_found.append(major_version)
-
-    # Smash the current release onto the front of the list
-    all_releases = head_releases + unstable_releases
-
-    # If we don't have the full version, don't just drop in an empty key
-    if full_version in all_releases:
-        all_releases.remove(full_version)
-        all_releases.insert(0, full_version)
 
     # Build the Release mapping table for insertion into the docs
     release_mapping_list = []
