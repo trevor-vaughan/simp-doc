@@ -35,7 +35,9 @@ def __update_ver_map(ver_map, data):
                 else:
                     ver_map[simp_version] = {os_key: {'isos': []}}
 
-                ver_map[simp_version][os_key]['isos'].extend(isos)
+                for iso in isos:
+                    if iso not in ver_map[simp_version][os_key]['isos']:
+                        ver_map[simp_version][os_key]['isos'].append(iso)
 
 def get_version_map(target_version, basedir, github_version_targets, on_rtd):
     """
@@ -98,44 +100,28 @@ def get_version_map(target_version, basedir, github_version_targets, on_rtd):
 
         return ver_map
 
-def format_version_map(ver_map, on_rtd):
+def version_map_to_rst(ver_map, on_rtd):
     """ Return a version of the version map that is suitable for printing. """
 
-    os_flavors = None
+    # Easy, cop out
+    if not ver_map:
+        return '* No SIMP Mapping Data Found'
 
     # Build the Release mapping table for insertion into the docs
     release_mapping_list = []
-    for release in all_releases:
-        os_flavors = ver_map['simp_releases'][release]['flavors']
-        release_mapping_list.append('* **SIMP ' + release + '**')
 
-        # Extract the actual OS version supported for placement in the docs
-        if os_flavors is not None:
-            if os_flavors['RedHat']:
-                ver_list = os_flavors['RedHat']['os_version'].split('.')
-                el_major_version = ver_list[0]
-                el_minor_version = ver_list[1]
-            elif os_flavors['CentOS']:
-                ver_list = os_flavors['CentOS']['os_version'].split('.')
-                el_major_version = ver_list[0]
-                el_minor_version = ver_list[1]
+    # Reverse sort to get the .X releases first
+    for simp_release in sorted(ver_map.keys(), reverse=True):
+        release_mapping_list.append('* **SIMP ' + simp_release + '**')
 
-            for os_flavor in os_flavors:
-                release_mapping_list.append("\n    * **" + os_flavor + ' ' + os_flavors[os_flavor]['os_version'] + '**')
-                for i, iso in enumerate(os_flavors[os_flavor]['isos']):
-                    release_mapping_list.append("\n      * **ISO #" + str(i+1) + ":** " + iso['name'])
-                    release_mapping_list.append("      * **Checksum:** " + iso['checksum'])
+        for os_key in sorted(ver_map[simp_release].keys()):
+            release_mapping_list.append("\n    * **" + os_key + ' ' + '**')
 
-                    # does it match my version?
-                    if (not on_rtd) and (release == full_version):
-                        saved_major_version = el_major_version
-                        saved_minor_version = el_minor_version
-
-                    if (on_rtd) and (release == full_version):
-                        saved_major_version = el_major_version
-                        saved_minor_version = el_minor_version
+            for i, iso in enumerate(ver_map[simp_release][os_key]['isos']):
+                release_mapping_list.append("\n      * **ISO #" + str(i+1) + ":** " + iso['name'])
+                release_mapping_list.append("      * **Checksum:** " + iso['checksum'])
 
         # Trailing newline
         release_mapping_list.append('')
 
-        return release_mapping_list
+        return "\n".join(release_mapping_list)

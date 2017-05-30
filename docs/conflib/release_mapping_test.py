@@ -18,8 +18,10 @@ def print_release_mapping():
     )
 
     if release_mapping_dict:
-        pp = pprint.PrettyPrinter()
-        pp.pprint(release_mapping_dict)
+        #pp = pprint.PrettyPrinter()
+        #pp.pprint(release_mapping_dict)
+
+        print(version_map_to_rst(release_mapping_dict, ON_RTD), file=sys.stdout)
     else:
         print('Error: No valid release mappings found', file=sys.stderr)
 
