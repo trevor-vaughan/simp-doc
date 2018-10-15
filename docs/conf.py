@@ -107,7 +107,8 @@ extensions = [
     # Usage:
     #   .. ifconfig:: releaselevel in ('alpha', 'beta', 'rc')
     'sphinx.ext.ifconfig',
-    'rst2pdf.pdfbuilder'
+    'rst2pdf.pdfbuilder',
+    'sphinxcontrib.spelling'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
