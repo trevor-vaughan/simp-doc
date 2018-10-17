@@ -33,31 +33,33 @@ package_release = '0'
 package_requires = ''
 
 -- Snag the RPM-specific items out of the 'build/rpm_metadata' directory
-rel_file = io.open(src_dir .. "/build/rpm_metadata/release", "r")
+rel_file = io.open(src_dir .. "/docs/changelog/latest.rst", "r")
 
-if not rel_file then
-  -- Need this for the SRPM case
-  rel_file = io.open(src_dir .. "/release", "r")
-end
-
+-- Get the first line and process it
 if rel_file then
+  local n=0
+  local tgt_line=1
   for line in rel_file:lines() do
-    is_comment = string.match(line, "^%s*#")
-    is_blank = string.match(line, "^%s*$")
+    n=n+1
 
-    if not (is_comment or is_blank) then
-      if string.match(line, "^%s?version:") then
-        version_match = line
-      elseif string.match(line, "^%s?release:") then
-        release_match = line
+    if n==tgt_line then
+      -- Get the last word in the string
+      last_word = string.match(line, "%s(%S+)$")
+
+      if last_word then
+        version_match, release_match = string.match(last_word, "(%S+)-(%S+)")
+
+        if version_match then
+          package_version = version_match
+        end
+
+        if release_match then
+          package_release = release_match
+        end
       end
+
+      break
     end
-  end
-  if version_match then
-    package_version = string.gsub(version_match,"version:","")
-  end
-  if release_match then
-    package_release = string.gsub(release_match,"release:","")
   end
 end
 }
@@ -94,11 +96,8 @@ Source0: %{name}-%{version}-%{release}.tar.gz
 Source1: CHANGELOG
 %{lua:
   -- Include our sources as appropriate
-  if rel_file then
-    print("Source2: release")
-  end
   if req_file then
-    print("Source3: requires")
+    print("Source2: requires")
   end
 }
 Buildroot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
